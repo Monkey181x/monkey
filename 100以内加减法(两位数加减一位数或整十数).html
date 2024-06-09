@@ -1,0 +1,261 @@
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>100以内加减法</title>
+	<style>
+		body {
+			width: 210mm; /* A4纸宽度减去边距 */
+			height: 297mm; /* A4纸高度减去边距 */
+			/*margin: 5mm auto;  上下左右边距 */
+			font-family: Arial, sans-serif;
+			font-size: 24px;
+			text-align: center;
+			padding: 0;
+		}
+		.container {
+			display: grid; grid-template-columns: repeat(4, 1fr); /* 4列 */ grid-gap: 5mm; /* 列间距 */
+		}
+		.question {
+			text-align: left;
+		}
+	</style>
+</head>
+<body>
+	<!--p>班级________  姓名________  时间________</p-->
+	<div class="container"></div>
+	<script>
+		//辅助函数：计算[min,max)随机数
+		function getRandMinMax(min,max) {  
+	        return Math.floor(Math.random() * (max-min) + min);
+	    }
+	    //辅助函数：随机获取一个数组元素
+		function getRandInArray(array) {
+			let pos = getRandMinMax(0, array.length)
+	    	return array[pos];
+	    }
+	    
+		//二元算式(加法)
+		class MathExprAdd {
+		  constructor(x, y) { this.op='+'; this.x = x; this.y = y; }
+		  result(){ return this.x + this.y; }
+		  toStr() {
+		  	if (Math.random() < 0.5) {//加法有50%几率交换加数位置
+		  		return `${this.x} + ${this.y}`;
+		  	} else {
+		  		return `${this.y} + ${this.x}`;
+		  	}
+		  }
+		}
+		//二元算式(减法)
+		class MathExprSub {
+		  constructor(x, y) { this.op='-'; this.x = x; this.y = y; }
+		  result(){ return this.x - this.y; }
+		  toStr() { return `${this.x} - ${this.y}`; }
+		}
+		
+		// 以结果为key的Map题库
+		class MathExprMap {
+		  constructor() {
+		    this.map = new Map();
+		  }
+
+		  push(expr) {
+		  	if (this.map.has(expr.result())){
+		  		let array = this.map.get(expr.result());
+		  		array.push(expr);
+		  	} else {
+		  		let array = [];
+		  		array.push(expr);
+		  		this.map.set(expr.result(), array);
+		  	}
+		  }
+		  rand(ret){
+		  	if (this.map.has(ret)){
+		  		return getRandInArray(this.map.get(ret));
+		  	}
+		  	return null;
+		  }
+		}
+		
+		var arrayAdd = [];		// 普通加法题库
+		var arrayAddCarry = [];	// 进位加法题库
+		var arrayAddTen = [];	// 包含整十数加法题库
+		var arraySub = [];		// 普通减法题库
+		var arraySubBorrow = [];// 退位减法题库
+		var arraySubTen = [];	// 包含整十数减法题库
+		
+		var mapRet = new MathExprMap();// 以结果为key的题库(不含整十数加减法)
+		var mapGen = new Map();	// 记录生成的算式，防止重复
+		
+		// 两位数加一位数(包含进位加) a*10+b+c
+		for (let a = 1; a < 10; a++) {
+			for (let b = 1; b < 10; b++) {//b>0过滤整十加几（太简单）
+				for (let c = 2; c < 10; c++) {//过滤掉加1（太简单）
+					let ret = a*10+b+c;
+					if (ret < 100){//结果小于100
+						let expt = new MathExprAdd(a*10+b, c);
+						if (b + c >= 10) {//进位加
+							arrayAddCarry.push(expt);
+							mapRet.push(expt);
+						} else {
+							arrayAdd.push(expt);
+							mapRet.push(expt);
+						}
+					}
+				}
+			}
+		}
+		// 两位数减一位数(包含退位减) a*10+b-c
+		for (let a = 1; a < 10; a++) {
+			for (let b = 0; b < 10; b++) {
+				for (let c = 2; c < 10; c++) {//过滤掉减1（太简单）
+					if (a*10+b == 10) continue;//过滤10减几（太简单）
+					if (b == c) continue;//过滤个位相等（太简单）
+					let ret = a*10+b-c;
+					if (ret > 0) {
+						let expr = new MathExprSub(a*10+b, c);
+						if (b < c){//退位减
+							arraySubBorrow.push(expr);
+							mapRet.push(expr);
+						} else {
+							arraySub.push(expr);
+							mapRet.push(expr);
+						}
+					}
+				}
+			}
+		}
+		// 两位数加整十数
+		for (let a = 1; a < 10; a++) {
+			for (let b = 1; b < 10; b++) {//b>0过滤整十数相加（太简单）
+				for (let c = 10; c < 100; c+=10) {
+					let ret = a*10+b+c;
+					if (ret < 100) {
+						let expt=new MathExprAdd(a*10+b, c);
+						arrayAddTen.push(expt);
+						//(三目运算替换非整十数时不含整十数加减法)
+						if (ret % 10 == 0)
+							mapRet.push(expt);
+					}
+				}
+			}
+		}
+		// 两位数减整十数
+		for (let a = 1; a < 10; a++) {
+			for (let b = 1; b < 10; b++) {//b>0过滤整十数相减（太简单）
+				for (let c = 10; c < 100; c+=10) {
+					ret = a*10+b-c;
+					if (ret > 0){
+						let expt=new MathExprSub(a*10+b, c);
+						arraySubTen.push(expt);
+						//(三目运算替换非整十数时不含整十数加减法)
+						if (ret % 10 == 0)
+							mapRet.push(expt);
+					}
+				}
+			}
+		}
+		
+		// 随机生成1个算式
+	    function generateQuestion() {
+	    	let expr;
+	    	//50%加法 50%减法
+	    	if (Math.random() < 0.5) {
+	        	if (Math.random() < 0.1) {//20%整十数
+	        		expr = getRandInArray(arrayAddTen);
+	        	} else {
+	        		if (Math.random() < 0.8) {//80%进位加
+		        		expr = getRandInArray(arrayAddCarry);
+		        	}else{
+		        		expr = getRandInArray(arrayAdd);
+		        	}
+	        	}
+        	} else {
+        		if (Math.random() < 0.1) {//20%整十数
+	        		expr = getRandInArray(arraySubTen);
+	        	} else {
+	        		if (Math.random() < 0.8) {//80%退位减
+		        		expr = getRandInArray(arraySubBorrow);
+		        	}else{
+		        		expr = getRandInArray(arraySub);
+		        	}
+	        	}
+        	}
+        	
+        	// 20%出现三元运算
+        	if (Math.random() < 0.2) {
+        		if (Math.random() < 0.2) {//20%对第二个数转换算式
+	        		let expr2 = mapRet.rand(expr.y);
+	        		if(expr2!=null) {
+	        			if (expr.op == '+' && Math.random() < 0.5){//加法有50%几率交换加数位置
+	        				if (Math.random() < 0.5) {//加法有50%几率去掉括号
+	        					return `${expr2.toStr()} + ${expr.x} =`;
+	        				} else {
+	        					return `(${expr2.toStr()}) + ${expr.x} =`;
+	        				}
+	        			}
+	        			return `${expr.x} ${expr.op} (${expr2.toStr()}) =`;
+	        		}
+	        	} else {
+	        		let expr2 = mapRet.rand(expr.x);
+	        		if (expr2!=null) {
+	        			if (expr.op == '+' && Math.random() < 0.5){//加法有50%几率交换加数位置
+	        				return `${expr.y} + (${expr2.toStr()})  =`;
+	        			}
+	        			if (Math.random() < 0.5) {//加法有50%几率去掉括号
+        					return `${expr2.toStr()} ${expr.op} ${expr.y} =`;
+        				} else {
+        					return `(${expr2.toStr()}) ${expr.op} ${expr.y} =`;
+        				}
+	        		}
+	        	}
+        	}
+        	return expr.toStr() + ' =';
+	    }
+	    
+	    // 随机生成1个不重复算式
+	    function generateUniqueQuestion() {
+	    	var expr = generateQuestion();
+			while(mapGen.has(expr))
+				expr = generateQuestion();
+			mapGen.set(expr, 1);
+			return expr;
+	    }
+	    
+	    // 生成100个算式
+		function generateMathExpression() {
+			const container = document.querySelector('.container');
+			while (container.firstChild) {
+				container.removeChild(container.firstChild);
+			}
+			for (let i = 0; i < 100; i++) {
+				const question = document.createElement('div');
+				question.className = 'question';
+				question.textContent = generateUniqueQuestion();
+				question.addEventListener('click', function() {
+				    this.textContent = generateUniqueQuestion();
+				});
+				container.appendChild(question);
+			}
+		}
+		generateMathExpression();
+		/*
+		console.log(arrayAdd.length);
+		console.log(arrayAddCarry.length);
+		console.log(arrayAddTen.length);
+		console.log(arraySub.length);
+		console.log(arraySubBorrow.length);
+		console.log(arraySubTen.length);
+		for (let [key, value] of mapRet.map) {
+			console.log(key, value.length);
+			for (let i = 0; i < value.length; i++) {
+			  console.log('\t',value[i].toStr());
+			}
+		}
+		console.log('end');*/
+	</script>
+</body>
+</html>
+		
+		
